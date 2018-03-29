@@ -93,7 +93,6 @@ def run_loop(screen):
 
             pos = pygame.mouse.get_pos()
             pos = Point(x=pos[0], y=pos[1])
-            screen.fill(COLOR_WHITE)
 
             # TODO(aryann): Check for illegal polygons, and prevent
             # the last line segment from being drawn if that line
@@ -119,11 +118,14 @@ def run_loop(screen):
                     if within_snapping_threshold:
                         line_segments = convert_to_line_segments(points)
                         state = State.END
+                        screen.fill(COLOR_WHITE)
                         pygame.draw.polygon(screen, COLOR_BLACK, points)
                     else:
                         draw_lines(points)
 
                 elif event.type == pygame.MOUSEMOTION:
+                    if points:
+                        screen.fill(COLOR_WHITE)
                     if len(points) > 1:
                         draw_lines(points)
                     if points:
@@ -136,6 +138,7 @@ def run_loop(screen):
                         color = COLOR_RED
                     else:
                         color = COLOR_BLACK
+                    screen.fill(COLOR_WHITE)
                     pygame.draw.polygon(screen, color, points)
                     
             else:
