@@ -79,7 +79,7 @@ class DrawingIterationPresenterStrategy(IterationPresenterStrategy):
         for i, centeroid in enumerate(centeroids):
             centeroid = Point(x=int(centeroid.x), y=int(centeroid.y))
             pygame.draw.circle(
-                self._screen, COLORS[i % len(COLORS)], centeroid, RADIUS * 2)
+                self._screen, COLORS[i % len(COLORS)], centeroid, RADIUS * 2, 1)
         pygame.display.update()
         time.sleep(0.05)
 
@@ -138,16 +138,6 @@ class KMeans(object):
         return centeroids
 
 
-
-def draw_clusters(clusters):
-    screen.fill(COLOR_WHITE)
-    for i, cluster in enumerate(clusters):
-        for point in cluster:
-            pygame.draw.circle(screen, COLORS[i % len(COLORS)], point, RADIUS)
-    pygame.display.update()
-
-
-            
 def run_loop(screen, num_clusters):
     points = []
     k_means_calculator = KMeans(
@@ -164,8 +154,7 @@ def run_loop(screen, num_clusters):
                 pos = Point(x=pos[0], y=pos[1])
                 points.append(pos)
 
-                clusters = k_means_calculator.find_k_means(points)
-                draw_clusters(clusters)
+                k_means_calculator.find_k_means(points)
 
 
 if __name__ == '__main__':
