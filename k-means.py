@@ -6,7 +6,7 @@ import pygame
 import sys
 import time
 
-NUM_ITERATIONS = 10
+NUM_ITERATIONS = 3
 SIZE = (1024, 1024)
 COLOR_WHITE = (255, 255, 255)
 COLORS = [
@@ -24,30 +24,6 @@ class Point(collections.namedtuple('Point', ['x', 'y'])):
         dx = self.x - other.x
         dy = self.y - other.y
         return math.sqrt(dx ** 2 + dy ** 2)
-
-
-class CenteroidPickerStrategy(object):
-    
-    __metaclass__ = abc.ABCMeta
-
-    @abc.abstractmethod
-    def pick_centeroids(self, points):
-        pass
-
-
-class OrderedCentroidPickerStrategy(CenteroidPickerStrategy):
-
-    def __init__(self, num_clusters):
-        self._num_clusters = num_clusters
-        
-    def pick_centeroids(self, points):
-        centeroids = []
-        if len(points) < self._num_clusters:
-            return points
-        for i in range(self._num_clusters):
-            centeroids.append(
-                points[i * int(len(points) / self._num_clusters)])
-        return centeroids
 
 
 class IterationPresenterStrategy(object):
@@ -96,37 +72,47 @@ class ChainingIterationPresenterStrategy(IterationPresenterStrategy):
     
 class KMeans(object):
 
-    def __init__(self, centeroid_picker_strategy, iteration_presenter_strategy):
-        self._centeroid_picker_strategy = centeroid_picker_strategy
+    def __init__(self, num_clusters, iteration_presenter_strategy):
+        self._num_clusters = num_clusters
         self._iteration_presenter_strategy = iteration_presenter_strategy
-        
-    def find_k_means(self, points):
-        centeroids = self._centeroid_picker_strategy.pick_centeroids(points)
-        for i in range(NUM_ITERATIONS):
-            clusters = self._cluster_points_one_iteration(points, centeroids)
-            self._iteration_presenter_strategy.present(i, clusters, centeroids)
-            centeroids = self._calculate_new_centeroids(clusters)
-        return clusters
-        
-    def _cluster_points_one_iteration(self, points, centeroids):
-        clusters = []
-        for i in range(len(centeroids)):
-            clusters.append([])
+        self._centeroids = []
+        self._clusters = []
 
-        for point in points:
-            closest_centeroid_distance = None
-            closest_centeroid_idx = None
-            assert centeroids
-            for i, centeroid in enumerate(centeroids):
-                distance = point.distance_to(centeroid)
-                if (closest_centeroid_distance is None or
-                    distance < closest_centeroid_distance):
-                    closest_centeroid_distance = distance
-                    closest_centeroid_idx = i
+    def add_point(self, point):
+        if len(self._clusters) < self._num_clusters:
+            self._centeroids.append(point)
+            self._clusters.append([point])
+            self._iteration_presenter_strategy.present(0, self._clusters, self._centeroids)
+        else:
+            self._clusters[self._find_closest_centeroid_idx(point)].append(point)
+            self._iteration_presenter_strategy.present(0, self._clusters, self._centeroids)
+            for i in range(NUM_ITERATIONS):
+                self._clusters = self._cluster_points_one_iteration()
+                self._iteration_presenter_strategy.present(i + 1, self._clusters, self._centeroids)
+                self._centeroids = self._calculate_new_centeroids(self._clusters)
 
-            clusters[closest_centeroid_idx].append(point)
+    def _cluster_points_one_iteration(self):
+        new_clusters = []
+        for i in range(self._num_clusters):
+            new_clusters.append([])
 
-        return clusters
+        for cluster in self._clusters:
+            for point in cluster:
+                new_clusters[self._find_closest_centeroid_idx(point)].append(point)
+
+        return new_clusters
+
+    def _find_closest_centeroid_idx(self, point):
+        closest_centeroid_distance = None
+        closest_centeroid_idx = None
+        assert self._centeroids
+        for i, centeroid in enumerate(self._centeroids):
+            distance = point.distance_to(centeroid)
+            if (closest_centeroid_distance is None or
+                distance < closest_centeroid_distance):
+                closest_centeroid_distance = distance
+                closest_centeroid_idx = i
+        return closest_centeroid_idx
 
     def _calculate_new_centeroids(self, clusters):
         centeroids = []
@@ -139,9 +125,8 @@ class KMeans(object):
 
 
 def run_loop(screen, num_clusters):
-    points = []
     k_means_calculator = KMeans(
-        OrderedCentroidPickerStrategy(num_clusters),
+        num_clusters,
         ChainingIterationPresenterStrategy([
             PrintingIterationPresenterStrategy(),
             DrawingIterationPresenterStrategy(screen),
@@ -151,10 +136,7 @@ def run_loop(screen, num_clusters):
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
-                pos = Point(x=pos[0], y=pos[1])
-                points.append(pos)
-
-                k_means_calculator.find_k_means(points)
+                k_means_calculator.add_point(Point(x=pos[0], y=pos[1]))
 
 
 if __name__ == '__main__':
