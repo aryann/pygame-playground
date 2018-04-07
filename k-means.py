@@ -6,7 +6,11 @@ import pygame
 import sys
 import time
 
-NUM_ITERATIONS = 3
+# TODO(aryann): Figure out if the algorithm is guaranteed to
+# converge. If it does, we may not need an upper bound on the number
+# of iterations.
+MAX_ITERATIONS = 100
+
 SIZE = (1024, 1024)
 COLOR_WHITE = (255, 255, 255)
 COLORS = [
@@ -86,10 +90,14 @@ class KMeans(object):
         else:
             self._clusters[self._find_closest_centeroid_idx(point)].append(point)
             self._iteration_presenter_strategy.present(0, self._clusters, self._centeroids)
-            for i in range(NUM_ITERATIONS):
+            for i in range(MAX_ITERATIONS):
                 self._clusters = self._cluster_points_one_iteration()
                 self._iteration_presenter_strategy.present(i + 1, self._clusters, self._centeroids)
-                self._centeroids = self._calculate_new_centeroids(self._clusters)
+                new_centeroids = self._calculate_new_centeroids(self._clusters)
+                if new_centeroids == self._centeroids:
+                    break
+                else:
+                    self._centeroids = new_centeroids
 
     def _cluster_points_one_iteration(self):
         new_clusters = []
